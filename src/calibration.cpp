@@ -167,7 +167,7 @@ template <typename _T>
   int min_cost_th = -1;
   std::vector< double > min_cost_calib_params;
   
-  for (int th_mult = 2; th_mult <= 10; th_mult++)
+  for (int th_mult = 1; th_mult <= 10; th_mult++)
   {
     std::vector< imu_tk::DataInterval > static_intervals;
     std::vector< imu_tk::TriadData_<_T> > static_samples;

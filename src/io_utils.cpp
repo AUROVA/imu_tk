@@ -51,22 +51,10 @@ void imu_tk::importAsciiData ( const char *filename,
   infile.open ( filename );
   if ( infile.is_open() )
   {
-    char format[266];
-    switch ( type )
-    {
-    case DATASET_COMMA_SEPARATED:
-      sprintf ( format,"%%lf, %%lf, %%lf, %%lf" );
-      break;
-    case DATASET_SPACE_SEPARATED:
-    default:
-      sprintf ( format,"%%lf %%lf %%lf %%lf" );
-      break;
-    }
-
     int l = 0;
     while ( getline ( infile,line ) )
     {
-      int res = sscanf ( line.data(), format, &ts, &d[0], &d[1], &d[2] );
+      int res = sscanf ( line.data(), "%lf,%lf,%lf,%lf", &ts, &d[0], &d[1], &d[2] );
       if ( res != 4 )
       {
         cout<<"importAsciiData(): error importing data in line "<<l<<", exit"<<endl;

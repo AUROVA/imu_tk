@@ -47,6 +47,7 @@ void imu_tk::importAsciiData ( const char *filename,
   string line;
   ifstream infile;
   double ts, d[3];
+  int interval_id,
 
   infile.open ( filename );
   if ( infile.is_open() )
@@ -54,15 +55,15 @@ void imu_tk::importAsciiData ( const char *filename,
     int l = 0;
     while ( getline ( infile,line ) )
     {
-      int res = sscanf ( line.data(), "%lf,%lf,%lf,%lf", &ts, &d[0], &d[1], &d[2] );
-      if ( res != 4 )
+      int res = sscanf ( line.data(), "%lf,%lf,%lf,%lf,%d", &ts, &d[0], &d[1], &d[2], &interval_id );
+      if ( res != 5 )
       {
         cout<<"importAsciiData(): error importing data in line "<<l<<", exit"<<endl;
       }
       else
       {
         ts /= unit;
-        samples.push_back ( TriadData_<_T> ( _T ( ts ), _T ( d[0] ), _T ( d[1] ), _T ( d[2] ) ) );
+        samples.push_back ( TriadData_<_T> ( _T ( ts ), _T ( d[0] ), _T ( d[1] ), _T ( d[2] ), interval_id ) );
       }
       l++;
     }
@@ -70,6 +71,7 @@ void imu_tk::importAsciiData ( const char *filename,
   }
 }
 
+/*
 template <typename _T>
 void imu_tk::importAsciiData ( const char *filename,
                                vector< TriadData_<_T> > &samples0,
@@ -170,6 +172,7 @@ void imu_tk::importAsciiData ( const char *filename,
     infile.close();
   }
 }
+*/
 
 template void imu_tk::importAsciiData<double> ( const char *filename,
     vector< TriadData_<double> > &samples,
@@ -177,6 +180,8 @@ template void imu_tk::importAsciiData<double> ( const char *filename,
 template void imu_tk::importAsciiData<float> ( const char *filename,
     vector< TriadData_<float> > &samples,
     TimestampUnit unit, DatasetType type );
+
+/*
 template void imu_tk::importAsciiData<double> ( const char *filename,
     vector< TriadData_<double> > &samples0,
     vector< TriadData_<double> > &samples1,
@@ -195,3 +200,4 @@ template void imu_tk::importAsciiData<float> ( const char *filename,
     vector< TriadData_<float> > &samples1,
     vector< TriadData_<float> > &samples2,
     TimestampUnit unit, DatasetType type );
+    */

@@ -41,42 +41,46 @@ template <typename _T > class TriadData_
 {
 public:
   /** @brief Construct an uninitialized TriadData_ object */
-  TriadData_() {};
+  TriadData_() {}
  
   /** @brief Construct a TriadData_ object from a timestamp and three values */  
-  TriadData_ ( _T timestamp, _T x, _T y, _T z ) :
+  TriadData_ ( _T timestamp, _T x, _T y, _T z, int interval_id ) :
     timestamp_ ( timestamp ),
-    data_ ( x, y, z ) {};
+    data_ ( x, y, z ),
+    interval_id_ ( interval_id ) {}
 
   /** @brief Construct an TriadData_ object from a timestamp and an Eigen vector */  
-  TriadData_ ( _T timestamp, const Eigen::Matrix< _T, 3, 1> &data ) :
+  TriadData_ ( _T timestamp, const Eigen::Matrix< _T, 3, 1> &data, int interval_id ) :
     timestamp_ ( timestamp ),
-    data_ ( data ) {};
+    data_ ( data ),
+    interval_id_ ( interval_id ) {}
 
   /** @brief Construct an TriadData_ object from a timestamp and an array with 3 elements */      
-  TriadData_ ( _T timestamp, const _T *data ) :
+  TriadData_ ( _T timestamp, const _T *data, int interval_id ) :
     timestamp_ ( timestamp ),
-    data_ ( data[0], data[1], data[2] ) {};
+    data_ ( data[0], data[1], data[2] ),
+    interval_id_ ( interval_id) {}
 
   /** @brief Copy constructor */
   TriadData_( const TriadData_ &o ) :
-   timestamp_(o.timestamp_), data_(o.data_) {};
+   timestamp_(o.timestamp_), data_(o.data_), interval_id(o.interval_id_){}
   
   /** @brief Copy assignment operator */
   TriadData_ & operator = (const TriadData_ &o )
   {
     timestamp_ = o.timestamp_;
     data_ = o.data_;
+    interval_id_ = o.interval_id_;
     return *this;
-  };
+  }
  
   /** @brief  Copy constructor 
    *
    * Supporting coercion using member template constructor */
-  template< typename _newT >
-    TriadData_( const TriadData_<_newT> &o ) :
-    timestamp_(_T(o.timestamp())), data_(o.data().template cast<_T>())
-  {};
+  template< typename _newT > TriadData_( const TriadData_<_newT> &o ) :
+    timestamp_(_T(o.timestamp())),
+    data_(o.data().template cast<_T>()),
+    interval_id_(o.interval_id_){}
   
   /** @brief Copy assignment operator 
    * 
@@ -86,39 +90,45 @@ public:
   {
     timestamp_ = _T(o.timestamp());
     data_ = o.data().template cast<_T>();
+    interval_id_ = o.interval_id_();
     return *this;
-  };
+  }
     
   ~TriadData_() {};
 
   inline const _T& timestamp() const
   {
     return timestamp_;
-  };
+  }
   inline const Eigen::Matrix< _T, 3, 1>& data() const
   {
     return data_;
-  };
+  }
+  inline const int& interval_id() const
+  {
+    return interval_id_;
+  }
   inline const _T& operator() ( int index ) const
   {
     return data_[index];
-  };
+  }
   inline const _T& x() const
   {
     return data_[0];
-  };
+  }
   inline const _T& y() const
   {
     return data_[1];
-  };
+  }
   inline const _T& z() const
   {
     return data_[2];
-  };
+  }
 
 private:
   Eigen::Matrix< _T, 3, 1> data_;
   _T timestamp_;
+  int interval_id_;
 };
 
 typedef TriadData_<double> TriadData;
@@ -146,6 +156,8 @@ struct DataInterval
    * @param start_ts Initial timestamp
    * @param end_ts Final timestamp
    */
+
+  /*
   template <typename _T> 
     static DataInterval fromTimestamps( const std::vector< TriadData_<_T> > &samples, 
                                         _T start_ts, _T end_ts )
@@ -168,13 +180,15 @@ struct DataInterval
     
     return DataInterval( start_idx, end_idx );
   };
- 
+  */
+
   /** @brief Extracts from the data samples vector a DataInterval object that represents 
    *         the initial interval with a given duration.
    *     
    * @param samples Input signal (data samples vector)
    * @param duration Interval duration
    */
+  /*
   template <typename _T> 
     static DataInterval initialInterval( const std::vector< TriadData_<_T> > &samples, 
                                          _T duration )
@@ -193,13 +207,16 @@ struct DataInterval
     
     return DataInterval( 0, end_idx );
   };
- 
+  */
+
   /** @brief Extracts from the data samples vector a DataInterval object that represents 
    *         the final interval with a given duration.
    *     
    * @param samples Input signal (data samples vector)
    * @param duration Interval duration
    */
+
+  /*
   template <typename _T> 
     static DataInterval finalInterval( const std::vector< TriadData_<_T> > &samples, 
                                        _T duration )
@@ -218,11 +235,12 @@ struct DataInterval
     
     return DataInterval( start_idx, samples.size() - 1 );
   };
-    
+  */
+
   int start_idx, end_idx;
   
 private:
-  
+  /*
   template <typename _T> static int timeToIndex( const std::vector< TriadData_<_T> > &samples, 
                                                  _T ts )
   {
@@ -240,7 +258,8 @@ private:
       return idx0;
     else
       return idx1;
-  };    
+  }
+  */;
 };
 
 /** @brief Perform a simple consistency check on a target input interval, 
@@ -252,10 +271,13 @@ private:
  * 
  * @returns The "corrected" interval
  */
+
+
 template <typename _T> 
   DataInterval checkInterval( const std::vector< TriadData_<_T> > &samples, 
                               const DataInterval &interval );
-  
+
+
 /** @brief Compute the arithmetic mean of a sequence of TriadData_ objects. If a valid data 
  *         interval is provided, the mean is computed only inside this interval
  *     
@@ -266,9 +288,12 @@ template <typename _T>
  * 
  * @returns A three dimensional vector representing the mean.
  */
+
+
 template <typename _T> 
   Eigen::Matrix< _T, 3, 1> dataMean ( const std::vector< TriadData_<_T> > &samples, 
                                       const DataInterval &interval = DataInterval() );
+
 
 /** @brief Compute the variance of a sequence of TriadData_ objects. If a valid data 
  *         interval is provided, the variance is computed only inside this interval
@@ -280,9 +305,12 @@ template <typename _T>
  * 
  * @returns A three dimensional vector representing the variance.
  */
+
+
 template <typename _T>
   Eigen::Matrix< _T, 3, 1> dataVariance ( const std::vector< TriadData_<_T> > &samples, 
                                           const DataInterval &interval = DataInterval() );
+
 
 /** @brief If the flag only_means is set to false, for each interval 
   *        (input vector intervals) extract from the input signal 
@@ -305,12 +333,15 @@ template <typename _T>
   *                   the one of the center of the interval.
   * 
   */
+
+
 template <typename _T> 
   void extractIntervalsSamples ( const std::vector< TriadData_<_T> > &samples,
                                  const std::vector< DataInterval > &intervals,
                                  std::vector< TriadData_<_T> > &extracted_samples,
                                  std::vector< DataInterval > &extracted_intervals,
                                  int interval_n_samps = 100, bool only_means = false );
+
 
 /** @brief Decompose a rotation matrix into the roll, pitch, and yaw angular components
  * 
@@ -330,9 +361,11 @@ template <typename _T>
   os<<triad_data.x()<<", ";
   os<<triad_data.y()<<", ";
   os<<triad_data.z()<<" ]";
+  os<<triad_data.interval_id();
   
   return os;
 }
+
 
 template <typename _T>
   DataInterval checkInterval( const std::vector< TriadData_<_T> > &samples, 
@@ -345,6 +378,7 @@ template <typename _T>
   
   return DataInterval( start_idx, end_idx );
 }
+
 
 template <typename _T>
   Eigen::Matrix< _T, 3, 1> dataMean( const std::vector< TriadData_<_T> >& samples, 

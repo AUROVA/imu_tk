@@ -27,9 +27,9 @@
  */
 
 #include "imu_tk/calibration.h"
-#include "imu_tk/filters.h"
 #include "imu_tk/integration.h"
 #include "imu_tk/visualization.h"
+#include "imu_tk/filters.h"
 
 #include <limits>
 #include <iostream>
@@ -139,10 +139,8 @@ template <typename _T1> struct MultiPosGyroResidual
 
 template <typename _T>
   MultiPosCalibration_<_T>::MultiPosCalibration_() :
-  g_mag_(9.81),
+  g_mag_(9.8),
   min_num_intervals_(12),
-  init_interval_duration_(_T(30.0)),
-  interval_n_samples_(100),
   acc_use_means_(false),
   gyro_dt_(-1.0),
   optimize_gyro_bias_(false),
@@ -158,83 +156,64 @@ template <typename _T>
   calib_gyro_samples_.clear();
   
   int n_samps = acc_samples.size();
-  
-  DataInterval init_static_interval = DataInterval::initialInterval( acc_samples, init_interval_duration_ );
-  Eigen::Matrix<_T, 3, 1> acc_variance = dataVariance( acc_samples, init_static_interval );
-  _T norm_th = acc_variance.norm();
 
-  _T min_cost = std::numeric_limits< _T >::max();
-  int min_cost_th = -1;
   std::vector< double > min_cost_calib_params;
+
+  std::vector< imu_tk::DataInterval > static_intervals;
+  std::vector< imu_tk::TriadData_<_T> > static_samples;
+  std::vector< double > acc_calib_params(9);
+
+  acc_calib_params[0] = init_acc_calib_.misYZ();
+  acc_calib_params[1] = init_acc_calib_.misZY();
+  acc_calib_params[2] = init_acc_calib_.misZX();
   
-  for (int th_mult = 1; th_mult <= 10; th_mult++)
+  acc_calib_params[3] = init_acc_calib_.scaleX();
+  acc_calib_params[4] = init_acc_calib_.scaleY();
+  acc_calib_params[5] = init_acc_calib_.scaleZ();
+  
+  acc_calib_params[6] = init_acc_calib_.biasX();
+  acc_calib_params[7] = init_acc_calib_.biasY();
+  acc_calib_params[8] = init_acc_calib_.biasZ();
+    
+  std::vector< DataInterval > extracted_intervals;
+
+  staticIntervalsDetector ( acc_samples, static_intervals );
+  extractIntervalsSamples ( acc_samples, static_intervals,
+                            static_samples, extracted_intervals,
+                            min_interval_n_samples_, acc_use_means_ );
+    
+  if(verbose_output_)
+    cout<<"Accelerometers calibration: extracted "<<extracted_intervals.size();
+
+  // TODO Perform here a quality test
+  if( extracted_intervals.size() < min_num_intervals_)
   {
-    std::vector< imu_tk::DataInterval > static_intervals;
-    std::vector< imu_tk::TriadData_<_T> > static_samples;
-    std::vector< double > acc_calib_params(9);
-    
-    acc_calib_params[0] = init_acc_calib_.misYZ();
-    acc_calib_params[1] = init_acc_calib_.misZY();
-    acc_calib_params[2] = init_acc_calib_.misZX();
-    
-    acc_calib_params[3] = init_acc_calib_.scaleX();
-    acc_calib_params[4] = init_acc_calib_.scaleY();
-    acc_calib_params[5] = init_acc_calib_.scaleZ();
-    
-    acc_calib_params[6] = init_acc_calib_.biasX();
-    acc_calib_params[7] = init_acc_calib_.biasY();
-    acc_calib_params[8] = init_acc_calib_.biasZ();
-    
-    std::vector< DataInterval > extracted_intervals;
-    staticIntervalsDetector ( acc_samples, th_mult*norm_th, static_intervals );
-    extractIntervalsSamples ( acc_samples, static_intervals, 
-                              static_samples, extracted_intervals,
-                              interval_n_samples_, acc_use_means_ );
-    
-    if(verbose_output_)
-      cout<<"Accelerometers calibration: extracted "<<extracted_intervals.size()
-          <<" intervals using threshold multiplier "<<th_mult<<" -> ";
-    
-    // TODO Perform here a quality test
-    if( extracted_intervals.size() < min_num_intervals_)
-    {
-      if( verbose_output_) cout<<"Not enough intervals, calibration is not possible"<<endl;
-      continue;
-    }
-    
-    if( verbose_output_) cout<<"Trying calibrate... "<<endl;
-    
-    ceres::Problem problem;
-    for( int i = 0; i < static_samples.size(); i++)
-    {
-      ceres::CostFunction* cost_function =
-        MultiPosAccResidual<_T>::Create ( g_mag_, static_samples[i].data() );
-
-      problem.AddResidualBlock ( cost_function, NULL /* squared loss */, acc_calib_params.data() ); 
-    }
-    
-    ceres::Solver::Options options;
-    options.linear_solver_type = ceres::DENSE_QR;
-    options.minimizer_progress_to_stdout = verbose_output_;
-
-    ceres::Solver::Summary summary;
-    ceres::Solve ( options, &problem, &summary );
-    if( summary.final_cost < min_cost)
-    {
-      min_cost = summary.final_cost;
-      min_cost_th = th_mult;
-      min_cost_static_intervals_ = static_intervals;
-      min_cost_calib_params = acc_calib_params;
-    }
-    cout<<"residual "<<summary.final_cost<<endl;
+    if( verbose_output_) cout<<"Not enough intervals, calibration is not possible"<<endl;
+    return(false);
   }
   
-  if( min_cost_th < 0 )
+  if( verbose_output_) cout<<"Calibrating... "<<endl;
+
+  ceres::Problem problem;
+  for( int i = 0; i < static_samples.size(); i++)
   {
-    if(verbose_output_) 
-      cout<<"Accelerometers calibration: Can't obtain any calibratin with the current dataset"<<endl;
-    return false;
+    ceres::CostFunction* cost_function =
+      MultiPosAccResidual<_T>::Create ( g_mag_, static_samples[i].data() );
+
+    problem.AddResidualBlock ( cost_function, NULL /* squared loss */, acc_calib_params.data() );
   }
+
+  ceres::Solver::Options options;
+  options.linear_solver_type = ceres::DENSE_QR;
+  options.minimizer_progress_to_stdout = verbose_output_;
+
+  ceres::Solver::Summary summary;
+  ceres::Solve ( options, &problem, &summary );
+
+  min_cost_static_intervals_ = static_intervals;
+  min_cost_calib_params = acc_calib_params;
+
+  cout<<"residual "<<summary.final_cost<<endl;
 
   acc_calib_ = CalibratedTriad_<_T>( min_cost_calib_params[0],
                                      min_cost_calib_params[1],
@@ -258,9 +237,7 @@ template <typename _T>
     Plot plot;
     plot.plotIntervals( calib_acc_samples_, min_cost_static_intervals_);
     
-    cout<<"Accelerometers calibration: Better calibration obtained using threshold multiplier "<<min_cost_th
-        <<" with residual "<<min_cost<<endl
-        <<acc_calib_<<endl
+    cout<<acc_calib_<<endl
         <<"Accelerometers calibration: inverse scale factors:"<<endl
         <<1.0/acc_calib_.scaleX()<<endl
         <<1.0/acc_calib_.scaleY()<<endl
@@ -268,9 +245,7 @@ template <typename _T>
         
     waitForKey();
   }
-  
   return true;
-    
 }
 
 template <typename _T> 
@@ -286,12 +261,12 @@ template <typename _T>
   std::vector< DataInterval > extracted_intervals;
   extractIntervalsSamples ( calib_acc_samples_, min_cost_static_intervals_, 
                             static_acc_means, extracted_intervals,
-                            interval_n_samples_, true );
+                            min_interval_n_samples_, true );
   
   int n_static_pos = static_acc_means.size(), n_samps = gyro_samples.size();
   
   // Compute the gyroscopes biases in the (static) initialization interval
-  DataInterval init_static_interval = DataInterval::initialInterval( gyro_samples, init_interval_duration_ );
+  DataInterval init_static_interval = DataInterval::initialInterval( gyro_samples );
   Eigen::Matrix<_T, 3, 1> gyro_bias = dataMean( gyro_samples, init_static_interval );
   
   gyro_calib_ = CalibratedTriad_<_T>(0, 0, 0, 0, 0, 0, 
@@ -325,7 +300,7 @@ template <typename _T>
   
   ceres::Problem problem;
       
-  for( int i = 0, t_idx = 0; i < n_static_pos - 1; i++ )
+  for( int i = 0; i < n_static_pos - 1; i++ )
   {
     Eigen::Matrix<_T, 3, 1> g_versor_pos0 = static_acc_means[i].data(),
                             g_versor_pos1 = static_acc_means[i + 1].data();
@@ -338,7 +313,7 @@ template <typename _T>
        ts1 = calib_acc_samples_[extracted_intervals[i + 1].start_idx].timestamp();
      
     // Assume monotone signal time
-    for( ; t_idx < n_samps; t_idx++ )
+    for( int t_idx = 0; t_idx < n_samps; t_idx++ )
     {
       if( gyro_idx0 < 0 )
       {

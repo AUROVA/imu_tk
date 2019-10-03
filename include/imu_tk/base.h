@@ -28,10 +28,10 @@
 
 #pragma once
 
-#include <vector>
+#include <Eigen/Core>
 #include <iostream>
 #include <stdexcept>
-#include <Eigen/Core>
+#include <vector>
 
 namespace imu_tk
 {
@@ -44,26 +44,26 @@ public:
   TriadData_() {}
  
   /** @brief Construct a TriadData_ object from a timestamp and three values */  
-  TriadData_ ( _T timestamp, _T x, _T y, _T z, int interval_id ) :
+  TriadData_ ( _T timestamp, _T x, _T y, _T z, int interval_id = -1 ) :
     timestamp_ ( timestamp ),
     data_ ( x, y, z ),
     interval_id_ ( interval_id ) {}
 
   /** @brief Construct an TriadData_ object from a timestamp and an Eigen vector */  
-  TriadData_ ( _T timestamp, const Eigen::Matrix< _T, 3, 1> &data, int interval_id ) :
+  TriadData_ ( _T timestamp, const Eigen::Matrix< _T, 3, 1> &data, int interval_id = -1 ) :
     timestamp_ ( timestamp ),
     data_ ( data ),
     interval_id_ ( interval_id ) {}
 
   /** @brief Construct an TriadData_ object from a timestamp and an array with 3 elements */      
-  TriadData_ ( _T timestamp, const _T *data, int interval_id ) :
+  TriadData_ ( _T timestamp, const _T *data, int interval_id = -1 ) :
     timestamp_ ( timestamp ),
     data_ ( data[0], data[1], data[2] ),
     interval_id_ ( interval_id) {}
 
   /** @brief Copy constructor */
   TriadData_( const TriadData_ &o ) :
-   timestamp_(o.timestamp_), data_(o.data_), interval_id(o.interval_id_){}
+   timestamp_(o.timestamp_), data_(o.data_), interval_id_(o.interval_id_){}
   
   /** @brief Copy assignment operator */
   TriadData_ & operator = (const TriadData_ &o )
@@ -80,7 +80,7 @@ public:
   template< typename _newT > TriadData_( const TriadData_<_newT> &o ) :
     timestamp_(_T(o.timestamp())),
     data_(o.data().template cast<_T>()),
-    interval_id_(o.interval_id_){}
+    interval_id_(o.interval_id()){}
   
   /** @brief Copy assignment operator 
    * 
@@ -188,26 +188,31 @@ struct DataInterval
    * @param samples Input signal (data samples vector)
    * @param duration Interval duration
    */
-  /*
+
   template <typename _T> 
-    static DataInterval initialInterval( const std::vector< TriadData_<_T> > &samples, 
-                                         _T duration )
+    static DataInterval initialInterval( const std::vector< TriadData_<_T> > &samples )
   {
-    if( duration <= 0)
-      throw std::invalid_argument("Invalid interval duration");
-    if( samples.size() < 3 )
-      throw std::invalid_argument("Invalid data samples vector");
+    int initial_idx = -1;
+    int end_idx     = -1;
+
+    int i = 0;
+    while ( (initial_idx == -1 || end_idx == -1) && i < samples.size())
+    {
+       if ( initial_idx == -1 && samples[i].interval_id() == 0)
+       {
+         initial_idx = i;
+       }
+
+       if ( initial_idx != -1 && samples[i].interval_id() != 0 )
+       {
+         end_idx = i-1;
+       }
+    }
     
-    _T end_ts = samples[0].timestamp() + duration;
-    int end_idx;
-    if ( end_ts >=  samples[samples.size() - 1].timestamp() ) 
-      end_idx = samples.size() - 1;
-    else
-      end_idx = timeToIndex( samples, end_ts );
+    assert ( initial_idx != -1 && end_idx != -1 && "Error in base.h initialInterval algorithm!");
     
-    return DataInterval( 0, end_idx );
+    return DataInterval( initial_idx, end_idx );
   };
-  */
 
   /** @brief Extracts from the data samples vector a DataInterval object that represents 
    *         the final interval with a given duration.
@@ -420,44 +425,46 @@ template <typename _T>
                                  const std::vector< DataInterval >& intervals, 
                                  std::vector< TriadData_<_T> >& extracted_samples, 
                                  std::vector< DataInterval > &extracted_intervals,
-                                 int interval_n_samps, bool only_means )
+                                 int min_interval_n_samps, bool only_means )
 {
   // Check for valid intervals  (i.e., intervals with at least interval_n_samps samples)
-  int n_valid_intervals = 0, n_static_samples;
+  int n_valid_intervals = 0, n_static_samples = 0;
   for( int i = 0; i < intervals.size(); i++)
   {
-    if( ( intervals[i].end_idx - intervals[i].start_idx + 1 ) >= interval_n_samps )
+    int interval_size = intervals[i].end_idx - intervals[i].start_idx + 1;
+    if( interval_size >= min_interval_n_samps )
+    {
       n_valid_intervals++;
+      n_static_samples += interval_size;
+    }
   }
   
   if( only_means )
     n_static_samples = n_valid_intervals;
-  else
-    n_static_samples = n_valid_intervals*interval_n_samps;
   
   extracted_samples.clear();
   extracted_intervals.clear();
   extracted_samples.reserve(n_static_samples);
   extracted_intervals.reserve(n_valid_intervals);
   
-  // For each valid interval, extract the first interval_n_samps samples
+  // For each valid interval, extract the samples
   for( int i = 0; i < intervals.size(); i++)
   {
     int interval_size = intervals[i].end_idx - intervals[i].start_idx + 1;
-    if( interval_size >= interval_n_samps )
+    if( interval_size >= min_interval_n_samps )
     {
       extracted_intervals.push_back( intervals[i] );
       if( only_means )
       {
-        DataInterval mean_inerval( intervals[i].start_idx, intervals[i].end_idx );
+        DataInterval mean_interval( intervals[i].start_idx, intervals[i].end_idx );
         // Take the timestamp centered in the interval where the mean is computed
         _T timestamp = samples[ intervals[i].start_idx + interval_size/2 ].timestamp();
-        Eigen::Matrix< _T, 3, 1> mean_val = dataMean ( samples, mean_inerval );
-        extracted_samples.push_back( TriadData_<_T>(timestamp, mean_val ) );
+        Eigen::Matrix< _T, 3, 1> mean_val = dataMean ( samples, mean_interval );
+        extracted_samples.push_back( TriadData_<_T>(timestamp, mean_val, i) );
       }
       else
       {
-        for(int j = intervals[i].start_idx; j < intervals[i].start_idx + interval_n_samps; j++)
+        for(int j = intervals[i].start_idx; j <= intervals[i].end_idx; j++)
           extracted_samples.push_back( samples[j] );
       }
     }

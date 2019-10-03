@@ -347,7 +347,7 @@ private:
   _T g_mag_;
   const int min_num_intervals_;
   //_T init_interval_duration_;
-  //int interval_n_samples_;
+  int min_interval_n_samples_;
   bool acc_use_means_;
   _T gyro_dt_;
   bool optimize_gyro_bias_;

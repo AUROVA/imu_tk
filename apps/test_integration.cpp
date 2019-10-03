@@ -23,7 +23,7 @@ int main(int argc, char** argv)
   
   cout<<"Importing IMU data from file : "<< argv[1]<<endl;  
   importAsciiData( argv[1], acc_data, gyro_data, mag_data, 
-                   imu_tk::TIMESTAMP_UNIT_USEC, imu_tk::DATASET_SPACE_SEPARATED);
+                   imu_tk::TIMESTAMP_UNIT_USEC, imu_tk::DATASET_COMMA_SEPARATED);
   
   Vector3d gyro_bias = dataMean( gyro_data, DataInterval(100, 3000));
   CalibratedTriad bias_calib;

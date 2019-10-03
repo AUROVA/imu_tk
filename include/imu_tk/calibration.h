@@ -232,13 +232,14 @@ public:
   /** @brief Provides the magnitude of the gravitational filed 
    *         used in the calibration (i.e., the gravity measured in
    *         the place where the calibration dataset has been acquired) */
-  _T gravityMagnitede() const { return g_mag_; };
+  _T gravityMagnitude() const { return g_mag_; };
+
 
   /** @brief Provides the duration in seconds of the initial static interval */
-  _T initStaticIntervalDuration() const { return init_interval_duration_; };
+  //_T initStaticIntervalDuration() const { return init_interval_duration_; };
   
   /** @brief Provides the number of data samples to be extracted from each detected static intervals */
-  int intarvalsNumSamples() const { return interval_n_samples_; };
+  //int intarvalsNumSamples() const { return interval_n_samples_; };
   
   /** @brief Provides the accelerometers initial guess calibration parameters */
   const CalibratedTriad_<_T>& initAccCalibration(){ return init_acc_calib_; };
@@ -273,11 +274,11 @@ public:
   void setGravityMagnitude( _T g ){ g_mag_ = g; };
   
   /** @brief Set the duration in seconds of the initial static interval. Default 30 seconds. */
-  _T setInitStaticIntervalDuration( _T duration ) { init_interval_duration_ = duration; };
+  //_T setInitStaticIntervalDuration( _T duration ) { init_interval_duration_ = duration; };
   
   /** @brief Set the number of data samples to be extracted from each detected static intervals.
    *         Default is 100.  */
-  int setIntarvalsNumSamples( int num ) { interval_n_samples_ = num; };
+  //int setIntarvalsNumSamples( int num ) { interval_n_samples_ = num; };
   
   /** @brief Set the accelerometers initial guess calibration parameters */  
   void setInitAccCalibration( CalibratedTriad_<_T> &init_calib ){ init_acc_calib_ = init_calib; };
@@ -345,8 +346,8 @@ private:
   
   _T g_mag_;
   const int min_num_intervals_;
-  _T init_interval_duration_;
-  int interval_n_samples_;
+  //_T init_interval_duration_;
+  //int interval_n_samples_;
   bool acc_use_means_;
   _T gyro_dt_;
   bool optimize_gyro_bias_;

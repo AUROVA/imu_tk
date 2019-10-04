@@ -140,6 +140,7 @@ template <typename _T1> struct MultiPosGyroResidual
 template <typename _T>
   MultiPosCalibration_<_T>::MultiPosCalibration_() :
   g_mag_(9.8),
+  min_interval_n_samples_(100),
   min_num_intervals_(12),
   acc_use_means_(false),
   gyro_dt_(-1.0),
@@ -267,6 +268,9 @@ template <typename _T>
   
   // Compute the gyroscopes biases in the (static) initialization interval
   DataInterval init_static_interval = DataInterval::initialInterval( gyro_samples );
+  std::cout << "Found initial interval starting in sample " << init_static_interval.start_idx <<
+      " and finishing in sample num " << init_static_interval.end_idx << std::endl;
+
   Eigen::Matrix<_T, 3, 1> gyro_bias = dataMean( gyro_samples, init_static_interval );
   
   gyro_calib_ = CalibratedTriad_<_T>(0, 0, 0, 0, 0, 0, 

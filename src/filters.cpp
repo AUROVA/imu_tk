@@ -39,27 +39,39 @@ template <typename _T>
   imu_tk::DataInterval current_interval(-1, -1);
   int previous_id = -1;
 
+  std::cout << "Starting staticIntervalsDetector!" << std::endl;
+  std::cout << "number of samples loaded from dataset = " << samples.size() << std::endl;
+
   for( int i = 0; i < samples.size(); i++ )
   {
-
-    assert ( samples[i].interval_id() >= 0 && "Error in staticIntervalsDetector, negative interval id!");
-
-    if ( samples[i].interval_id() != previous_id )
+    if( samples[i].interval_id() != -1)
     {
-      if( current_interval.start_idx != -1)
+      std::cout << "id of sample num " << i << " = " << samples[i].interval_id() << std::endl;
+      std::cout << "previous id = " << previous_id << std::endl;
+
+      if ( samples[i].interval_id() != previous_id )
       {
-        intervals.push_back(current_interval);
+        if( current_interval.start_idx != -1)
+        {
+          std::cout << "Saving interval that started in sample num " << current_interval.start_idx <<
+              " and finished in sample num " << current_interval.end_idx << std::endl;
+          intervals.push_back(current_interval);
+          std::cout << "Total number of interval stored: " << intervals.size() << std::endl;
+        }
+        current_interval.start_idx = i;
+        previous_id = samples[i].interval_id();
       }
-      current_interval.start_idx = i;
-      previous_id = samples[i].interval_id();
-    }
-    
-    if ( samples[i].interval_id() == previous_id )
-    {
-       current_interval.end_idx = i;
+
+      if ( samples[i].interval_id() == previous_id )
+      {
+         current_interval.end_idx = i;
+      }
     }
   }
+  std::cout << "Saving interval that started in sample num " << current_interval.start_idx <<
+      " and finished in sample num " << current_interval.end_idx << std::endl;
   intervals.push_back(current_interval);
+  std::cout << "Total number of interval stored: " << intervals.size() << std::endl;
 }
 
 

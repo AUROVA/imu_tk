@@ -207,6 +207,7 @@ struct DataInterval
        {
          end_idx = i-1;
        }
+       i++;
     }
     
     assert ( initial_idx != -1 && end_idx != -1 && "Error in base.h initialInterval algorithm!");
@@ -428,15 +429,22 @@ template <typename _T>
                                  int min_interval_n_samps, bool only_means )
 {
   // Check for valid intervals  (i.e., intervals with at least interval_n_samps samples)
+  std::cout << std::endl << std::endl << std::endl << std::endl << "Starting extractIntervalSamples!" << std::endl;
+  std::cout << "min number of sample to declare valid interval = " << min_interval_n_samps << std::endl;
+
+  std::cout << "number of intervals received = " << intervals.size() << std::endl;
   int n_valid_intervals = 0, n_static_samples = 0;
   for( int i = 0; i < intervals.size(); i++)
   {
     int interval_size = intervals[i].end_idx - intervals[i].start_idx + 1;
+    std::cout << "size of interval num " << i << " = " << interval_size << std::endl;
     if( interval_size >= min_interval_n_samps )
     {
       n_valid_intervals++;
       n_static_samples += interval_size;
     }
+    std::cout << "num of valid intervals = " << n_valid_intervals << std::endl;
+    std::cout << "num of valid static samples = " << n_static_samples << std::endl;
   }
   
   if( only_means )
@@ -447,6 +455,9 @@ template <typename _T>
   extracted_samples.reserve(n_static_samples);
   extracted_intervals.reserve(n_valid_intervals);
   
+  std::cout << "Final num of valid intervals = " << n_valid_intervals << std::endl;
+  std::cout << "Final num of valid static samples = " << n_static_samples << std::endl;
+
   // For each valid interval, extract the samples
   for( int i = 0; i < intervals.size(); i++)
   {

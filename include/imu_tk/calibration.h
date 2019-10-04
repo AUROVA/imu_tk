@@ -186,18 +186,20 @@ public:
     return TriadData_<_T>( raw_data.timestamp(), unbias( raw_data.data()) );
   };
   
-private:
-
-  /** @brief Update internal data (e.g., compute Misalignment * scale matrix) 
-   *         after a parameter is changed */
-  void update();
-  
+  //TODO: Make getters and turn these into private variables
   /** @brief Misalignment matrix */
   Eigen::Matrix< _T, 3 , 3> mis_mat_;
   /** @brief Scale matrix */
   Eigen::Matrix< _T, 3 , 3> scale_mat_;
   /** @brief Bias vector */
   Eigen::Matrix< _T, 3 , 1> bias_vec_;
+
+private:
+
+  /** @brief Update internal data (e.g., compute Misalignment * scale matrix) 
+   *         after a parameter is changed */
+  void update();
+  
   /** @brief Misalignment * scale matrix */
   Eigen::Matrix< _T, 3 , 3> ms_mat_;
 };
@@ -341,12 +343,14 @@ public:
   /** @brief Provide the calibrated gyroscopes data vector (it should be called after
    *         calibrateAccGyro() ) */
   const std::vector< TriadData_<_T> >& getCalibGyroSamples() const { return calib_gyro_samples_; };
-  
+
+  /** @brief Save the calibration gyros and accelerometers parameters in a yaml file to be loaded from ros */
+  bool save( std::string filename ) const;
+
 private:
   
   _T g_mag_;
   const int min_num_intervals_;
-  //_T init_interval_duration_;
   int min_interval_n_samples_;
   bool acc_use_means_;
   _T gyro_dt_;
@@ -420,9 +424,19 @@ template <typename _T>
   std::ofstream file( filename.data() );
   if (file.is_open())
   {
-    file<<mis_mat_<<std::endl<<std::endl
-        <<scale_mat_<<std::endl<<std::endl
-        <<bias_vec_<<std::endl<<std::endl;
+    file<<"misalign_matrix: ["
+        << mis_mat_(0,0) << ", " << mis_mat_(0,1) << ", " << mis_mat_(0,2) << ", " << std::endl << "                      "
+        << mis_mat_(1,0) << ", " << mis_mat_(1,1) << ", " << mis_mat_(1,2) << ", " << std::endl << "                      "
+        << mis_mat_(2,0) << ", " << mis_mat_(2,1) << ", " << mis_mat_(2,2) << "]"
+        << std::endl     << std::endl
+        <<"escale_matrix: ["
+        << scale_mat_(0,0) << ", " << scale_mat_(0,1) << ", " << scale_mat_(0,2) << ", " << std::endl << "                    "
+        << scale_mat_(1,0) << ", " << scale_mat_(1,1) << ", " << scale_mat_(1,2) << ", " << std::endl << "                    "
+        << scale_mat_(2,0) << ", " << scale_mat_(2,1) << ", " << scale_mat_(2,2) << "]"
+        << std::endl     << std::endl
+        <<"bias_vector: ["
+        << bias_vec_(0,0) << ", " << bias_vec_(0,1) << ", " << bias_vec_(0,2) << "]"
+        <<std::endl<<std::endl;
     
     return true;
   }
@@ -444,4 +458,45 @@ template <typename _T> std::ostream& imu_tk::operator<<(std::ostream& os,
   os<<"Bias Vector"<<std::endl;
   os<<calib_triad.getBiasVector()<<std::endl;
   return os;
+}
+
+template <typename _T>
+  bool imu_tk::MultiPosCalibration_<_T>::save( std::string filename ) const
+{
+  std::ofstream file( filename.data() );
+  if (file.is_open())
+  {
+    imu_tk::CalibratedTriad_<_T> acc_calib  = this->getAccCalib();
+    imu_tk::CalibratedTriad_<_T> gyro_calib = this->getGyroCalib();
+
+    file<<"acc_misalign_matrix: ["
+        << acc_calib.mis_mat_(0,0) << ", " << acc_calib.mis_mat_(0,1) << ", " << acc_calib.mis_mat_(0,2) << ", " << std::endl << "                      "
+        << acc_calib.mis_mat_(1,0) << ", " << acc_calib.mis_mat_(1,1) << ", " << acc_calib.mis_mat_(1,2) << ", " << std::endl << "                      "
+        << acc_calib.mis_mat_(2,0) << ", " << acc_calib.mis_mat_(2,1) << ", " << acc_calib.mis_mat_(2,2) << "]"
+        << std::endl     << std::endl
+        <<"acc_scale_matrix: ["
+        << acc_calib.scale_mat_(0,0) << ", " << acc_calib.scale_mat_(0,1) << ", " << acc_calib.scale_mat_(0,2) << ", " << std::endl << "                    "
+        << acc_calib.scale_mat_(1,0) << ", " << acc_calib.scale_mat_(1,1) << ", " << acc_calib.scale_mat_(1,2) << ", " << std::endl << "                    "
+        << acc_calib.scale_mat_(2,0) << ", " << acc_calib.scale_mat_(2,1) << ", " << acc_calib.scale_mat_(2,2) << "]"
+        << std::endl     << std::endl
+        <<"acc_bias_vector: ["
+        << acc_calib.bias_vec_(0) << ", " << acc_calib.bias_vec_(1) << ", " << acc_calib.bias_vec_(2) << "]"
+        <<std::endl<<std::endl
+        <<"gyro_misalign_matrix: ["
+        << gyro_calib.mis_mat_(0,0) << ", " << gyro_calib.mis_mat_(0,1) << ", " << gyro_calib.mis_mat_(0,2) << ", " << std::endl << "                       "
+        << gyro_calib.mis_mat_(1,0) << ", " << gyro_calib.mis_mat_(1,1) << ", " << gyro_calib.mis_mat_(1,2) << ", " << std::endl << "                       "
+        << gyro_calib.mis_mat_(2,0) << ", " << gyro_calib.mis_mat_(2,1) << ", " << gyro_calib.mis_mat_(2,2) << "]"
+        << std::endl     << std::endl
+        <<"gyro_scale_matrix: ["
+        << gyro_calib.scale_mat_(0,0) << ", " << gyro_calib.scale_mat_(0,1) << ", " << gyro_calib.scale_mat_(0,2) << ", " << std::endl << "                     "
+        << gyro_calib.scale_mat_(1,0) << ", " << gyro_calib.scale_mat_(1,1) << ", " << gyro_calib.scale_mat_(1,2) << ", " << std::endl << "                     "
+        << gyro_calib.scale_mat_(2,0) << ", " << gyro_calib.scale_mat_(2,1) << ", " << gyro_calib.scale_mat_(2,2) << "]"
+        << std::endl     << std::endl
+        <<"gyro_bias_vector: ["
+        << gyro_calib.bias_vec_(0) << ", " << gyro_calib.bias_vec_(1) << ", " << gyro_calib.bias_vec_(2) << "]"
+        <<std::endl<<std::endl;
+
+    return true;
+  }
+  return false;
 }
